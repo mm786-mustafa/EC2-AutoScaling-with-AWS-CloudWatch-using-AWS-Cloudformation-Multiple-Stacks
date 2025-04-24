@@ -1,0 +1,288 @@
+AWSTemplateFormatVersion: 2010-09-09
+Transform: 'AWS::LanguageExtensions'
+
+Description: Contains VPC structure for deploying wordpress
+
+# ******************* Parameters *********************
+Parameters:
+  Environment:
+    Description: Different environments types
+    Type: String
+    Default: dev
+    AllowedValues:
+    - dev
+    - testing
+    - prod
+
+  VpcName:
+    Description: Name of Vpc
+    Type: String
+    Default: mustafa-vpc
+
+  VpcCidr:
+    Description: Cidr block of Vpc
+    Type: String
+    Default: 10.0.0.0/16
+
+  IgwName:
+    Description: Name of internet gateway
+    Type: String
+    Default: mustafa-igw
+
+  EipName:
+    Description: Name of elastic IP address
+    Type: String
+    Default: mustafa-eip
+
+  NgwName:
+    Description: Name of NAT gateway
+    Type: String
+    Default: mustafa-ngw
+
+  PublicRouteTableName:
+    Description: Name of public route table
+    Type: String
+    Default: mustafa-public-RT
+
+  PrivateRouteTableName:
+    Description: Name of private route table
+    Type: String
+    Default: mustafa-private-RT
+
+  AvailabilityZones:
+    Description: List of Availability zones in the region
+    Type: List<AWS::EC2::AvailabilityZone::Name>
+
+  PublicSubnetName:
+    Description: Name of public subnet
+    Type: String
+    Default: mustafa-public-subnet
+
+  PublicRouteDestinationCidr:
+    Description: Cidr block of destination
+    Type: String
+    Default: 0.0.0.0/0
+
+  PrivateSubnetName:
+    Description: Name of private subnet
+    Type: String
+    Default: mustafa-private-subnet
+
+  PrivateRouteDestinationCidr:
+    Description: Cidr block of destination
+    Type: String
+    Default: 0.0.0.0/0
+
+# ******************* Mappings **********************
+Mappings:
+  CidrIndexPublicSubnets:
+    us-west-2a:
+      Index: "0"
+    us-west-2b:
+      Index: "1"
+    us-west-2c:
+      Index: "2"
+    us-west-2d:
+      Index: "3"
+
+  CidrIndexPrivateSubnets:
+    us-west-2a:
+      Index: "4"
+    us-west-2b:
+      Index: "5"
+    us-west-2c:
+      Index: "6"
+    us-west-2d:
+      Index: "7"
+
+# ******************* Resources *********************
+Resources:
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCidr
+      Tags:
+      - Key: Name
+        Value: !Sub "${Environment}-${VpcName}-${AWS::Region}"
+      - Key: Stack-Name
+        Value: !Sub "${AWS::StackName}"
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+      - Key: Name
+        Value: !Sub "${Environment}-${IgwName}-${AWS::Region}"
+      - Key: Stack-Name
+        Value: !Sub "${AWS::StackName}"
+
+  VpcAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+  ElasticIpAddress:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      Tags:
+      - Key: Name
+        Value: !Sub "${Environment}-${EipName}-${AWS::Region}"
+      - Key: Stack-Name
+        Value: !Sub "${AWS::StackName}"
+
+  NatGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt ElasticIpAddress.AllocationId
+      SubnetId: !Ref PublicSubnetuswest2a
+      Tags:
+      - Value: !Sub "${Environment}-${NgwName}-${AWS::Region}"
+        Key: Name
+      - Key: Stack-Name
+        Value: !Sub "${AWS::StackName}"
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+      - Value: !Sub "${Environment}-${PublicRouteTableName}-${AWS::Region}"
+        Key: Name
+      - Key: Stack-Name
+        Value: !Sub "${AWS::StackName}"
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: !Ref PublicRouteDestinationCidr
+      GatewayId: !Ref InternetGateway
+
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+      - Value: !Sub "${Environment}-${PrivateRouteTableName}-${AWS::Region}"
+        Key: Name
+      - Key: Stack-Name
+        Value: !Sub "${AWS::StackName}"
+
+  PrivateRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: !Ref PrivateRouteDestinationCidr
+      NatGatewayId: !Ref NatGateway
+
+  'Fn::ForEach::CreatingPublicSubnets':
+  - AZ
+  - !Ref AvailabilityZones
+  - 'PublicSubnet&{AZ}':
+      Type: AWS::EC2::Subnet
+      Properties:
+        VpcId: !Ref VPC
+        CidrBlock: !Select
+          - !FindInMap [ CidrIndexPublicSubnets, !Sub "${AZ}", Index ]
+          - !Cidr
+            - !Ref VpcCidr
+            - 8
+            - 8
+        AvailabilityZone: !Sub "${AZ}"
+        Tags:
+        - Key: Name
+          Value: !Sub "${Environment}-${PublicSubnetName}-${AZ}"
+        - Key: Stack-Name
+          Value: !Sub "${AWS::StackName}"
+
+    # Route Table Association
+    'PublicSubnet&{AZ}RouteTableAssociation':
+      Type: AWS::EC2::SubnetRouteTableAssociation
+      Properties:
+        SubnetId: !Ref
+          Fn::Join:
+          - ""
+          - - "PublicSubnet"
+            - Fn::Join:
+              - ""
+              - - !Select [ 0, !Split [ "-", !Sub "${AZ}" ] ]
+                - !Select [ 1, !Split [ "-", !Sub "${AZ}" ] ]
+                - !Select [ 2, !Split [ "-", !Sub "${AZ}" ] ]
+        RouteTableId: !Ref PublicRouteTable
+
+  'Fn::ForEach::CreatingPrivateSubnets':
+  - AZ
+  - !Ref AvailabilityZones
+  - 'PrivateSubnet&{AZ}':
+      Type: AWS::EC2::Subnet
+      Properties:
+        VpcId: !Ref VPC
+        CidrBlock: !Select
+          - !FindInMap [ CidrIndexPrivateSubnets, !Sub "${AZ}", Index ]
+          - !Cidr
+            - !Ref VpcCidr
+            - 8
+            - 8
+        AvailabilityZone: !Sub "${AZ}"
+        Tags:
+        - Key: Name
+          Value: !Sub "${Environment}-${PrivateSubnetName}-${AZ}"
+        - Key: Stack-Name
+          Value: !Sub "${AWS::StackName}"
+
+    # Route Table Association
+    'PrivateSubnet&{AZ}RouteTableAssociation':
+      Type: AWS::EC2::SubnetRouteTableAssociation
+      Properties:
+        SubnetId: !Ref
+          Fn::Join:
+          - ""
+          - - "PrivateSubnet"
+            - Fn::Join:
+              - ""
+              - - !Select [ 0, !Split [ "-", !Sub "${AZ}" ] ]
+                - !Select [ 1, !Split [ "-", !Sub "${AZ}" ] ]
+                - !Select [ 2, !Split [ "-", !Sub "${AZ}" ] ]
+        RouteTableId: !Ref PrivateRouteTable
+
+# ******************* Outputs ***********************
+Outputs:
+  VpcId:
+    Description: Id of Vpc
+    Value: !Ref VPC
+
+  InternetGatewayId:
+    Description: Id of internet gateway
+    Value: !Ref InternetGateway
+
+  NatGatewayId:
+    Description: Id of NAT gateway
+    Value: !Ref NatGateway
+
+  PublicRouteTableId:
+    Description: Id of public route table
+    Value: !Ref PublicRouteTable
+
+  PrivateRouteTableId:
+    Description: Id of private route table
+    Value: !Ref PrivateRouteTable
+
+  PublicSubnetIds:
+    Description: Ids of public subnets
+    Value: !Join
+      - ","
+      - - !Ref PublicSubnetuswest2a
+        - !Ref PublicSubnetuswest2b
+        - !Ref PublicSubnetuswest2c
+        - !Ref PublicSubnetuswest2d
+
+  PrivateSubnetIds:
+    Description: Ids of private subnets
+    Value: !Join
+      - ","
+      - - !Ref PrivateSubnetuswest2a
+        - !Ref PrivateSubnetuswest2b
+        - !Ref PrivateSubnetuswest2c
+        - !Ref PrivateSubnetuswest2d

@@ -1,0 +1,18 @@
+AWSTemplateFormatVersion: 2010-09-09
+Transform: 'AWS::LanguageExtensions'
+
+Description: Contains autoscaling structure for deploying wordpress
+
+# ******************* Parameters *********************
+Parameters:
+  Environment:
+    Description: Different environments types
+    Type: String
+    Default: dev
+    AllowedValues:
+    - dev
+    - testing
+    - prod
+
+# ******************* Parameters *********************
+Resources:
