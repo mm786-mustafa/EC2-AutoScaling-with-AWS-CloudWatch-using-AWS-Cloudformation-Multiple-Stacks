@@ -14,5 +14,65 @@ Parameters:
     - testing
     - prod
 
-# ******************* Parameters *********************
+  SecurityGroupName:
+    Description: name of security group
+    Type: String
+    Default: mustafa-sg
+
+  RdsDbInstanceName:
+    Description: Name of RDS database instance
+    Type: String
+    Default: mustafa-db
+
+  RdsEngineName:
+    Description: Name of engine to use
+    Type: String
+    Default: MySQL
+
+  RdsEngineVersion:
+    Description: Version of engine to use
+    Type: Number
+    Default: 8.0.33
+
+  RdsDbInstanceClass:
+    Description: Class of database to use
+    Type: String
+    Default: db.t3.micro
+  
+
+# ******************* Resources *********************
 Resources:
+  SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow HTTP and MySQL port
+      VpcId: !ImportValue VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          CidrIp: !ImportValue mustafa-vpc-stack-VpcCidr
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+      Tags:
+      - Key: Name
+        Value: !Sub "${Environment}-${SecurityGroupName}-${AWS::Region}"
+      - Key: Name
+        Value: AWS::StackName
+
+  RdsDatabase:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      Engine: !Ref RdsEngineName
+      EngineVersion: !Ref RdsEngineVersion
+      DBInstanceIdentifier: !Sub "${Environment}-${RdsDbInstanceName}-${AWS::Region}"
+      DBInstanceClass: !Ref RdsDbInstanceClass
+
+
+
+# ******************* Outputs *********************

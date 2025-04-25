@@ -252,22 +252,38 @@ Outputs:
   VpcId:
     Description: Id of Vpc
     Value: !Ref VPC
+    Export:
+      Name: !Sub "${AWS::StackName}-VpcId"
+
+  VpcCidr:
+    Description: Cidr of Vpc
+    Value: !Ref VpcCidr
+    Export:
+      Name: !Sub "${AWS::StackName}-VpcCidr"
 
   InternetGatewayId:
     Description: Id of internet gateway
     Value: !Ref InternetGateway
+    Export:
+      Name: !Sub "${AWS::StackName}-InternetGatewayId"
 
   NatGatewayId:
     Description: Id of NAT gateway
     Value: !Ref NatGateway
+    Export:
+      Name: !Sub "${AWS::StackName}-NatGatewayId"
 
   PublicRouteTableId:
     Description: Id of public route table
     Value: !Ref PublicRouteTable
+    Export:
+      Name: !Sub "${AWS::StackName}-PublicRouteTableId"
 
   PrivateRouteTableId:
     Description: Id of private route table
     Value: !Ref PrivateRouteTable
+    Export:
+      Name: !Sub "${AWS::StackName}-PrivateRouteTableId"
 
   PublicSubnetIds:
     Description: Ids of public subnets
@@ -277,6 +293,8 @@ Outputs:
         - !Ref PublicSubnetuswest2b
         - !Ref PublicSubnetuswest2c
         - !Ref PublicSubnetuswest2d
+    Export:
+      Name: !Sub "${AWS::StackName}-PublicSubnetIds"
 
   PrivateSubnetIds:
     Description: Ids of private subnets
@@ -286,3 +304,5 @@ Outputs:
         - !Ref PrivateSubnetuswest2b
         - !Ref PrivateSubnetuswest2c
         - !Ref PrivateSubnetuswest2d
+    Export:
+      Name: !Sub "${AWS::StackName}-PrivateSubnetIds"
