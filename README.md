@@ -1,4 +1,4 @@
-# EC2-AutoScaling-with-AWS-CloudWatch-using-AWS-Cloudformation-Multiple-Stacks
+# EC2-AutoScaling-with-AWS-CloudWatch-using-AWS-Cloudformation-with-Cross-Stacks
 📦 WordPress Deployment on AWS Using CloudFormation
 This repository provides an automated solution for deploying a WordPress website on AWS infrastructure using CloudFormation.
 The deployment is broken into three separate stacks for modularity and easy management:
